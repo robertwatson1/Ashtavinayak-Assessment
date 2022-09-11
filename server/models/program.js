@@ -3,7 +3,7 @@ const { model, Schema } = require('mongoose');
 const ProgramSchema = new Schema({
     id: Number,
     name: String,
-    exercise: String,
+    exercise: Array,
 }, {
     timestamps: ['createdAt', 'updatedAt']
 });

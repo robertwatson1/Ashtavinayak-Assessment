@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Joi, validate } = require('express-validation');
 const Program = require('../models/program');
+const Exercise = require('../models/exercise');
 
 
 /**
@@ -39,14 +40,14 @@ router.post("/create", validate({
     body: Joi.object({
         id: Joi.number().required(),
         name: Joi.string().required(),
-        exercise: Joi.string().required()
+        // exercise: Joi.string().required()
     })
 }, {}, {}), async function (req, res, next) {
     try {
         const {
             id,
             name,
-            exercise
+            // exercise
         } = req.body;
 
         const existOne = await Program.findOne({
@@ -63,7 +64,7 @@ router.post("/create", validate({
         const program = new Program();
         program.id = id;
         program.name = name;
-        program.exercise = exercise;
+        // program.exercise = exercise;
 
         await program.save();
 
@@ -183,42 +184,53 @@ router.post("/edit", validate({
  router.post("/add-exercise", validate({
     body: Joi.object({
         programId: Joi.number().required(),
-        exerciseName: Joi.string().required()
+        exerciseId: Joi.number().required()
     })
 }, {}, {}), async function (req, res, next) {
     try {
         const {
             programId,
-            exerciseName
+            exerciseId
         } = req.body;
 
-        const existOne = await Program.findOne({
+        const program = await Program.findOne({
             id: programId
         });
 
-        if(!existOne) {
+        if(!program) {
             return res.json({
                 status: false,
                 message: "Program not exist!"
             })
         }
 
-        existOne.exercise = exerciseName;
 
-        await existOne.save();
+        const exercise = await Exercise.findOne({id: exerciseId});
+
+        const existEx = program.exercise.find(el=>el.id === Number(exerciseId));
+        if(existEx) {
+            return res.json({
+                status: false,
+                message: "Can't add because already exist in Program!"
+            });
+        }
+
+        program.exercise.push({id: exercise.id,  name: exercise.name});
+
+        await program.save();
 
         const allData = await Program.find();
 
         res.json({
             status: true,
             data: allData,
-            message: "Successfully Created!"
+            message: "Successfully Added!"
         });
     }
     catch(err) {
         res.json({
             status: false,
-            message: "Creating Error - " + err.string()
+            message: "Adding Exercise Error - " + err
         });
     }
 });

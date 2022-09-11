@@ -50,7 +50,7 @@ export default function MainPage() {
   const addProgram = () => {
     setIsLoading(true)
 
-    if ( programId === 0 || programName === "" || programExercise === "" ) {
+    if ( programId === 0 || programName === ""/* || programExercise === ""*/ ) {
       setIsLoading(false)
       toast.error("Please input all informations.")
       return
@@ -59,7 +59,7 @@ export default function MainPage() {
     const data = {
       id: programId,
       name: programName,
-      exercise: programExercise,
+      // exercise: programExercise,
     }
 
     const url = modalSwitch ? "/program/create" : "/program/edit"
@@ -213,17 +213,18 @@ export default function MainPage() {
 
   // Get Dropdown selected name
   const [exName, setExName] = useState("")
+  const [exId, setExId] = useState(0)
 
   //Add Exercise to Program
   const addExerciseToProgram = (programId) => {
-    if ( programId === 0 || exName === "" ) {
+    if ( programId === 0 || exId === 0 ) {
       toast.error("Please select program or exercise to add.")
       return
     }
 
     const data = {
       programId: programId,
-      exerciseName: exName,
+      exerciseId: exId,
     }
 
     axios
@@ -386,7 +387,6 @@ export default function MainPage() {
                   <tr>
                     <th>#</th>
                     <th>Program Name</th>
-                    <th>Exercise</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -397,7 +397,7 @@ export default function MainPage() {
                         <tr key={i} onClick={ onClickHandler }>
                           <td>{data.id}</td>
                           <td>{data.name}</td>
-                          <td>{data.exercise}</td>
+                          
                           <td>
                             <Button className="me-3" variant="warning" type="button" onClick={ ()=>handleEditProgram(data) }>Edit</Button>
                             <Button className="me-3" variant="danger" type="button" onClick={ ()=>deleteProgram(data.id) }>Delete</Button>
@@ -407,14 +407,16 @@ export default function MainPage() {
                           <td colSpan="4">
                             <Dropdown className="d-flex justify-content-center">
                               <Dropdown.Toggle className="toggle d-flex">
-                                <div>{exName === "" ? 'Exercise' : exName}</div>
+                                <div id={"drop-toggle-"+i}>Exercise</div>
                               </Dropdown.Toggle>
 
                               <Dropdown.Menu className="menu">
                                 {
-                                  exercises.map((item, i) => (
-                                    <Dropdown.Item className="item" key={i} onClick={() => {
+                                  exercises.map((item, j) => (
+                                    <Dropdown.Item className="item" key={j} onClick={() => {
                                       setExName(item.name)
+                                      setExId(item.id)
+                                      document.getElementById("drop-toggle-"+i).innerText = item.name
                                     }}>
                                       <div>{item.name}</div>
                                     </Dropdown.Item>
@@ -428,8 +430,28 @@ export default function MainPage() {
                                 Add
                               </Button>
                             </Dropdown>
-
                             
+                            <Container className="col-sm-8 mt-4">
+                              { data.exercise.length > 0 ? 
+                              <Table bordered>
+                                <thead>
+                                  <tr>
+                                    <th>#</th>
+                                    <th>Name</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {
+                                    data.exercise.map((el, i) => (
+                                      <tr key={i}>
+                                        <td>{el.id}</td>
+                                        <td>{el.name}</td>
+                                      </tr>
+                                    ))
+                                  }
+                                </tbody>
+                              </Table> : <></>}
+                            </Container>
                           </td>
                         </tr>
                       </>

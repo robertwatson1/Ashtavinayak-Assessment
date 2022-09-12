@@ -4,7 +4,7 @@ const ExerciseSchema = new Schema({
     id: Number,
     name: String,
     length: Number,
-    // photo: File
+    photo: String,
 }, {
     timestamps: ['createdAt', 'updatedAt']
 });

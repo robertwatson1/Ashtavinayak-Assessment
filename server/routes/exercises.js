@@ -1,4 +1,5 @@
 const express = require('express');
+const fs = require('fs');
 const router = express.Router();
 const { Joi, validate } = require('express-validation');
 const Exercise = require('../models/exercise');
@@ -40,7 +41,6 @@ router.post("/create", validate({
         id: Joi.number().required(),
         name: Joi.string().required(),
         length: Joi.number().required(),
-        // photo: 
     })
 }, {}, {}), async function (req, res, next) {
     try {
@@ -49,6 +49,14 @@ router.post("/create", validate({
             name,
             length
         } = req.body;
+
+        let avatarImg;
+        console.log(req.files.photo);
+        if(req.files.photo) {
+            var img = fs.readFileSync(req.files.photo.path);
+            avatarImg = 'data:image/jpeg;charset=utf-8;base64,' + img.toString('base64');
+
+        }
 
         const existOne = await Exercise.findOne({
             id: id
@@ -64,6 +72,7 @@ router.post("/create", validate({
         data.id = id;
         data.name = name;
         data.length = length;
+        data.photo = avatarImg;
 
         await data.save();
 
@@ -75,7 +84,7 @@ router.post("/create", validate({
     catch(err) {
         res.json({
             status: false,
-            message: "Creating Error - " + err.string()
+            message: "Creating Error - " + err.toString()
         });
     }
 });

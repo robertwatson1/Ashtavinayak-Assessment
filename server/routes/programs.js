@@ -92,14 +92,12 @@ router.post("/edit", validate({
     body: Joi.object({
         id: Joi.number().required(),
         name: Joi.string().required(),
-        exercise: Joi.string().required()
     })
 }, {}, {}), async function (req, res, next) {
     try {
         const {
             id,
             name,
-            exercise
         } = req.body;
 
         const program = await Program.findOne({
@@ -114,7 +112,6 @@ router.post("/edit", validate({
 
         program.id = id;
         program.name = name;
-        program.exercise = exercise;
 
         await program.save();
 
@@ -215,7 +212,7 @@ router.post("/edit", validate({
             });
         }
 
-        program.exercise.push({id: exercise.id,  name: exercise.name});
+        program.exercise.push({id: exercise.id,  name: exercise.name, length: exercise.length, photo: exercise.photo});
 
         await program.save();
 

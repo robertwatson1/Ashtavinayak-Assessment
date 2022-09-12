@@ -3,13 +3,12 @@ import {
   Container, Row, Form, Button, Spinner, Modal, Table, Dropdown,
 } from "react-bootstrap"
 import { ToastContainer, toast } from "react-toastify"
-import axios from "axios"
-import { SERVER_URL } from "../config"
+import { add_program, delete_program, add_exercise_to_program, get_programs } from "../api/program"
+import { add_exercise, get_exercises } from "../api/exercise"
 
-let showFlag = false
 
 export default function MainPage() {
-  
+  const [showFlag, setShowFlag] = useState(false)
   // Create Program Modal
   const [programShow, setProgramShow] = useState(false)
   const handleProgramClose = () => setProgramShow(false)
@@ -17,7 +16,6 @@ export default function MainPage() {
   
   const [programId, setProgramId] = useState(0)
   const [programName, setProgramName] = useState("")
-  const [programExercise, setProgramExercise] = useState("")
 
   // true: add program, false: edit program
   const [modalSwitch, setModalSwitch] = useState(true)
@@ -27,9 +25,14 @@ export default function MainPage() {
   const handleExerciseClose = () => setExerciseShow(false)
   const handleExerciseShow = () => setExerciseShow(true)
   
-  const [exerciseId, setExerciseId] = useState(0)
-  const [exerciseName, setExerciseName] = useState("")
-  const [exerciseLength, setExerciseLength] = useState(0)
+  const [newExercise, setNewExercise] = useState({ id: 0, name: '', length: 0, photo: ''})
+  const handleExercise = (e) => {
+    setNewExercise({...newExercise, [e.target.name]: e.target.value})
+  }
+
+  const handleExercisePhoto = (e) => {
+    setNewExercise({...newExercise, photo: e.target.files[0]})
+  }
 
   // Submit Button Spinner
   const [isLoading, setIsLoading] = useState(false)
@@ -44,93 +47,74 @@ export default function MainPage() {
     // Set Init value
     setProgramId(0)
     setProgramName("")
-    setProgramExercise("")
   }
 
-  const addProgram = () => {
+  const addProgram = async () => {
+    try {
+      setIsLoading(true)
+
+      if ( programId === 0 || programName === "" ) {
+        setIsLoading(false)
+        toast.error("Please input all informations.")
+        return
+      }
+
+      const data = {
+        id: programId,
+        name: programName,
+      }
+
+      const result = await add_program(modalSwitch, data)
+      if (result.status) {
+          setIsLoading(false)
+          toast.success(result.message)
+
+          // Get updated data
+          setPrograms(result.data)
+          
+          initProgramValues()
+
+          handleProgramClose()
+      } else {
+        setIsLoading(false)
+        toast.error(result.message)
+      }
+    } catch(err) {
+      console.log(err)
+    }
+  }
+
+  const addExercise = async () => {
     setIsLoading(true)
 
-    if ( programId === 0 || programName === ""/* || programExercise === ""*/ ) {
+    if ( newExercise.id === 0 || newExercise.name === "" || newExercise.length === 0 || newExercise.photo === "") {
       setIsLoading(false)
       toast.error("Please input all informations.")
       return
     }
 
-    const data = {
-      id: programId,
-      name: programName,
-      // exercise: programExercise,
-    }
+    let formData = new FormData()
+    formData.append('photo', newExercise.photo)
+    formData.append('id', newExercise.id)
+    formData.append('length', newExercise.length)
+    formData.append('name', newExercise.name)
 
-    const url = modalSwitch ? "/program/create" : "/program/edit"
+    const res = await add_exercise(formData)
+    if (res.status) {
+        setIsLoading(false)
+        toast.success(res.message)
 
-    axios
-      .post(SERVER_URL + url, data)
-      .then((res) => {
-        if (res.data.status) {
-          setTimeout(() => {
-            setIsLoading(false)
-            toast.success(res.data.message)
+        // Set Init value
+        setNewExercise({id: 0, name: "", length: 0, photo: ""})
 
-            // Get updated data
-            showFlag = false
-            setPrograms(res.data.data)
-            
-            initProgramValues()
-
-            handleProgramClose()
-          }, 2000)
-        } else {
-          setIsLoading(false)
-          toast.error(res.data.message)
-        }
-      })
-      .catch((err) => {
-        console.log(err)
-      })
-  }
-
-  const addExercise = () => {
-    setIsLoading(true)
-
-    if ( exerciseId === 0 || exerciseName === "" || exerciseLength === "" ) {
+        handleExerciseClose()
+    } else {
       setIsLoading(false)
-      toast.error("Please input all informations.")
-      return
+      toast.error(res.message)
     }
-
-    const data = {
-      id: exerciseId,
-      name: exerciseName,
-      length: exerciseLength,
-    }
-
-    axios
-      .post(SERVER_URL + "/exercise/create", data)
-      .then((res) => {
-        if (res.data.status) {
-          setTimeout(() => {
-            setIsLoading(false)
-            toast.success(res.data.message)
-
-            // Set Init value
-            setExerciseId(0)
-            setExerciseName("")
-            setExerciseLength(0)
-
-            handleExerciseClose()
-          }, 2000)
-        } else {
-          setIsLoading(false)
-          toast.error(res.data.message)
-        }
-      })
-      .catch((err) => {
-        console.log(err)
-      })
   }
 
-  const deleteProgram = (id) => {
+  const deleteProgram = async (id) => {
     if(!window.confirm("Are you going to delete this data?")) {
       return
     }
@@ -139,30 +123,19 @@ export default function MainPage() {
       id: id
     }
 
-    axios
-      .post(SERVER_URL + "/program/delete", data)
-      .then((res) => {
-        if (res.data.status) {
-          setTimeout(() => {
-            toast.success(res.data.message)
-
-            //Get updated data
-            showFlag = false
-            setPrograms(res.data.data)
-          }, 2000)
-        } else {
-          toast.error(res.data.message)
-        }
-      })
-      .catch((err) => {
-        console.log(err)
-      })
+    const res = await delete_program(data)
+      
+    if (res.status) {
+        toast.success(res.message)
+        setPrograms(res.data)
+    } else {
+      toast.error(res.message)
+    }
   }
 
   const handleEditProgram = (data) => {
     setProgramId(data.id)
     setProgramName(data.name)
-    setProgramExercise(data.exercise)
 
     setModalSwitch(false)
 
@@ -171,35 +144,23 @@ export default function MainPage() {
 
   useEffect(()=>{
     const loadPrograms = async () =>{
-      await axios
-      .get(SERVER_URL + "/program/get-data")
-      .then(async (res) => {
-        if (res.data.status) {
-          const data = res.data.data
-          setPrograms(data)
-          console.log(programs)
-          showFlag = true
-        } else {
-          toast.error(res.data.message)
-        }
-      })
-      .catch((err) => {
-        console.log(err)
-      })
+      const res = await get_programs()
+      if (res.status) {
+        const data = res.data
+        setPrograms(data)
 
-      await axios
-      .get(SERVER_URL + "/exercise/get-data")
-      .then(async (res) => {
-        if (res.data.status) {
-          const data = res.data.data
-          setExercises(data)
-        } else {
-          toast.error(res.data.message)
-        }
-      })
-      .catch((err) => {
-        console.log(err)
-      })
+        setShowFlag(true)
+      } else {
+        toast.error(res.message)
+      }
+
+    const exData = await get_exercises()
+      if (exData.status) {
+        const data = exData.data
+        setExercises(data)
+      } else {
+        toast.error(exData.message)
+      }
     }
     
     loadPrograms()
@@ -212,11 +173,10 @@ export default function MainPage() {
   };
 
   // Get Dropdown selected name
-  const [exName, setExName] = useState("")
   const [exId, setExId] = useState(0)
 
   //Add Exercise to Program
-  const addExerciseToProgram = (programId) => {
+  const addExerciseToProgram = async (programId) => {
     if ( programId === 0 || exId === 0 ) {
       toast.error("Please select program or exercise to add.")
       return
@@ -227,25 +187,17 @@ export default function MainPage() {
       exerciseId: exId,
     }
 
-    axios
-      .post(SERVER_URL + "/program/add-exercise", data)
-      .then((res) => {
-        if (res.data.status) {
-          setTimeout(() => {
-            setIsLoading(false)
-            toast.success(res.data.message)
+    const res = await add_exercise_to_program(data)
+    if (res.status) {
+        setIsLoading(false)
+        toast.success(res.message)
 
-            setPrograms(res.data.data)
-            handleExerciseClose()
-          }, 2000)
-        } else {
-          setIsLoading(false)
-          toast.error(res.data.message)
-        }
-      })
-      .catch((err) => {
-        console.log(err)
-      })
+        setPrograms(res.data)
+        handleExerciseClose()
+    } else {
+      setIsLoading(false)
+      toast.error(res.message)
+    }
   }
 
   return (
@@ -284,17 +236,6 @@ export default function MainPage() {
                 />
               </Form.Group>
 
-              <Form.Group className="mb-3" controlId="formProgramExercise">
-                <Form.Label>Exercise</Form.Label>
-                <Form.Control 
-                  type="text" 
-                  placeholder="Enter Exercise" 
-                  value={programExercise}
-                  onChange={(e) => {
-                    setProgramExercise(e.target.value)
-                  }}
-                />
-              </Form.Group>
               {isLoading ? 
                 <Button variant="primary" disabled>
                   <Spinner animation="grow" />
@@ -320,10 +261,11 @@ export default function MainPage() {
                 <Form.Control 
                   type="number" 
                   placeholder="Enter ID" 
-                  value={exerciseId}
-                  onChange={(e) => {
-                    setExerciseId(e.target.value)
-                  }}
+                  name="id"
+                  value={newExercise.id}
+                  onChange={ handleExercise
+                    // setExerciseId(e.target.value)
+                  }
                 />
               </Form.Group>
 
@@ -332,10 +274,12 @@ export default function MainPage() {
                 <Form.Control 
                   type="text" 
                   placeholder="Enter Name" 
-                  value={exerciseName}
-                  onChange={(e) => {
-                    setExerciseName(e.target.value)
-                  }}
+                  name="name"
+                  value={newExercise.name}
+                  onChange={
+                    handleExercise
+                    // setExerciseName(e.target.value)
+                  }
                 />
               </Form.Group>
 
@@ -344,10 +288,25 @@ export default function MainPage() {
                 <Form.Control 
                   type="text" 
                   placeholder="Enter Exercise Length" 
-                  value={exerciseLength}
-                  onChange={(e) => {
-                    setExerciseLength(e.target.value)
-                  }}
+                  name="length"
+                  value={newExercise.length}
+                  onChange={
+                    handleExercise
+                    // setExerciseLength(e.target.value)
+                  }
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3" controlId="formExerciseImage">
+                <Form.Label>Exercise Photo</Form.Label>
+                <Form.Control 
+                  type="file" 
+                  placeholder="Enter Exercise Photo" 
+                  name="photo"
+                  onChange={
+                    handleExercisePhoto
+                    // setExercisePhoto(e.target.files[0])
+                  }
                 />
               </Form.Group>
               {isLoading ? 
@@ -355,7 +314,7 @@ export default function MainPage() {
                   <Spinner animation="grow" />
                 </Button>
               :
-                <Button variant="primary" type="button" onClick={()=>addExercise()}>
+                <Button variant="primary" type="button" onClick={addExercise}>
                   Submit
                 </Button>
               }
@@ -414,7 +373,6 @@ export default function MainPage() {
                                 {
                                   exercises.map((item, j) => (
                                     <Dropdown.Item className="item" key={j} onClick={() => {
-                                      setExName(item.name)
                                       setExId(item.id)
                                       document.getElementById("drop-toggle-"+i).innerText = item.name
                                     }}>
@@ -438,6 +396,8 @@ export default function MainPage() {
                                   <tr>
                                     <th>#</th>
                                     <th>Name</th>
+                                    <th>length</th>
+                                    <th>Photo</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -446,6 +406,8 @@ export default function MainPage() {
                                       <tr key={i}>
                                         <td>{el.id}</td>
                                         <td>{el.name}</td>
+                                        <td>{el.length}</td>
+                                        <td><img src={el.photo} alt="" /></td>
                                       </tr>
                                     ))
                                   }
